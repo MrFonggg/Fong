@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>小二數學：寶可夢觸控雙人對戰！</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1f1c2c, #928dab);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+            color: #333;
+            overflow: hidden;
+        }
+        
+        /* 工具列（全屏按鈕區） */
+        #toolbar {
+            position: fixed;
+            top: 15px;
+            right: 15px;
+            z-index: 90;
+        }
+        .btn-control {
+            padding: 10px 20px;
+            font-size: 18px;
+            font-weight: bold;
+            background: #333;
+            color: #fff;
+            border: 2px solid #fff;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        .btn-control:active {
+            transform: translateY(2px);
+        }
+
+        /* 主畫面 / 開始選單 */
+        #start-screen {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, #2c3e50, #000);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .menu-title {
+            font-size: 56px;
+            font-weight: bold;
+            color: #ffeb3b;
+            text-shadow: 4px 4px 0 #d32f2f, 7px 7px 0 #000;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .rules-box {
+            width: 650px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 3px solid #ff9800;
+            border-radius: 15px;
+            padding: 20px 30px;
+            margin-bottom: 30px;
+            box-shadow: inset 0 0 15px rgba(255,255,255,0.2);
+        }
+        .rules-box h3 {
+            margin-top: 0;
+            color: #ff9800;
+            font-size: 26px;
+            text-align: center;
+            border-bottom: 2px dashed rgba(255,255,255,0.3);
+            padding-bottom: 10px;
+        }
+        .rules-box ul {
+            font-size: 20px;
+            line-height: 1.8;
+            padding-left: 20px;
+            margin-bottom: 0;
+        }
+        .btn-start {
+            padding: 15px 60px;
+            font-size: 32px;
+            font-weight: bold;
+            background: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 6px 0 #2e7d32, 0 10px 20px rgba(0,0,0,0.4);
+            transition: all 0.1s;
+        }
+        .btn-start:active {
+            transform: translateY(6px);
+            box-shadow: 0 0px 0 #2e7d32, 0 4px 10px rgba(0,0,0,0.4);
+        }
+
+        /* 遊戲主容器 */
+        #game-container {
+            display: none; /* 初始隱藏，點開始後才顯示 */
+            width: 1050px;
+            background: rgba(255, 255, 255, 0.95);
+            border: 6px solid #333;
+            border-radius: 25px;
+            padding: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+        }
+        .battle-arena {
+            display: flex;
+            justify-content: space-between;
+            background: #e0f7fa;
+            padding: 15px 25px;
+            border-radius: 20px;
+            position: relative;
+            height: 250px;
+            border: 3px solid #00acc1;
+            overflow: hidden;
+        }
+        .pokemon-card {
+            width: 40%;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: transform 0.2s;
+        }
+        .pokemon-name {
+            font-size: 26px;
+            font-weight: bold;
+            margin-bottom: 5px;
+            background: #fff;
+            padding: 2px 20px;
+            border-radius: 20px;
+            border: 2px solid #333;
+        }
+        .pokemon-img {
+            width: 130px;
+            height: 130px;
+            margin: 5px 0;
+            object-fit: contain;
+        }
+        .hp-bar-container {
+            width: 100%;
+            background: #ddd;
+            border-radius: 10px;
+            height: 22px;
+            overflow: hidden;
+            border: 2px solid #555;
+        }
+        .hp-bar {
+            height: 100%;
+            background: #4caf50;
+            width: 100%;
+            transition: width 0.4s cubic-bezier(0.075, 0.82, 0.165, 1);
+        }
+        .hp-text {
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+        .combo-dots {
+            font-size: 20px;
+            margin-top: 2px;
+        }
+        
+        /* 雙人觸控作答區 */
+        .quiz-arena {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+            gap: 25px;
+        }
+        .player-quiz-box {
+            width: 50%;
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+            box-sizing: border-box;
+        }
+        .player-quiz-box.p1-box { background: #e8f5e9; border: 4px solid #4caf50; }
+        .player-quiz-box.p2-box { background: #e3f2fd; border: 4px solid #2196f3; }
+        
+        .quiz-header {
+            font-size: 20px;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px dashed #999;
+        }
+        .question-text {
+            font-size: 46px;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 15px;
+            color: #111;
+            height: 60px;
+        }
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        
+        .btn-option {
+            padding: 20px 10px;
+            font-size: 28px;
+            font-weight: bold;
+            background: #fff;
+            border: 3px solid #ccc;
+            border-radius: 12px;
+            text-align: center;
+            cursor pointer;
+            box-shadow: 0 4px 0 #bbb;
+            transition: background-color 0.15s ease;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .p1-box .btn-option { border-color: #81c784; box-shadow: 0 4px 0 #66bb6a; }
+        .p2-box .btn-option { border-color: #90caf9; box-shadow: 0 4px 0 #42a5f5; }
+
+        .btn-option:active {
+            transform: translateY(4px);
+            box-shadow: none;
+        }
+
+        /* 動畫特效 */
+        .attack-left { animation: slideRight 0.4s ease-in-out; }
+        .attack-right { animation: slideLeft 0.4s ease-in-out; }
+        .hurt { animation: shake 0.4s ease-in-out; filter: brightness(1.4) sepia(1) hue-rotate(-50deg); }
+        
+        @keyframes slideRight {
+            0% { transform: translateX(0); }
+            50% { transform: translateX(80px) scale(1.1); }
+            100% { transform: translateX(0); }
+        }
+        @keyframes slideLeft {
+            0% { transform: translateX(0); }
+            50% { transform: translateX(-80px) scale(1.1); }
+            100% { transform: translateX(0); }
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-12px); }
+            40%, 80% { transform: translateX(12px); }
+        }
+        .floating-damage {
+            position: absolute;
+            font-size: 42px;
+            font-weight: bold;
+            color: #d32f2f;
+            text-shadow: 2px 2px 0 #fff;
+            animation: floatUp 0.8s forwards;
+        }
+        .floating-damage.crit {
+            color: #ffb300;
+            font-size: 48px;
+            text-shadow: 2px 2px 0 #000;
+        }
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translateY(0) scale(0.8); }
+            50% { transform: translateY(-40px) scale(1.2); }
+            100% { opacity: 0; transform: translateY(-80px) scale(1); }
+        }
+        
+        #vs-text {
+            font-size: 45px;
+            font-weight: bold;
+            font-style: italic;
+            color: #ffeb3b;
+            text-shadow: 3px 3px 0 #000;
+            align-self: center;
+        }
+        #victory-screen {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            color: white;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 54px;
+            z-index: 100;
+        }
+        #restart-btn {
+            margin-top: 30px;
+            padding: 20px 50px;
+            font-size: 28px;
+            background: #ff9800;
+            color: white;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 5px 0 #e65100;
+        }
+        #restart-btn:active {
+            transform: translateY(5px);
+            box-shadow: none;
+        }
+    </style>
+</head>
+<body>
+
+<div id="toolbar">
+    <button class="btn-control" onclick="toggleFullScreen()">🖥️ 全屏顯示</button>
+</div>
+
+<div id="start-screen">
+    <div class="menu-title">寶可夢：乘除法心算大對戰！</div>
+    <div class="rules-box">
+        <h3>📜 遊戲對戰規則</h3>
+        <ul>
+            <li>雙方<b>同時進行作答</b>，不需輪流，看誰心算速度快！</li>
+            <li>每<b>連續答對 2 題</b>（集滿兩個紅色印章），寶可夢就會發動攻擊！</li>
+            <li><b>答題越快，傷害越高</b>；答錯的話，印章會歸零並被鎖定 0.6 秒。</li>
+            <li>攻擊時有機會觸發<b>「效果絕佳」暴擊</b>，造成雙倍傷害！</li>
+            <li>先將對手的 HP（血條）扣減至 0 的玩家獲勝！</li>
+        </ul>
+    </div>
+    <button class="btn-start" onclick="startGame()">登入戰場</button>
+</div>
+
+<div id="game-container">
+    <div class="battle-arena">
+        <div id="p1-card" class="pokemon-card">
+            <div id="p1-name" class="pokemon-name">玩家 1</div>
+            <img id="p1-img" class="pokemon-img" src="" alt="p1">
+            <div class="hp-bar-container"><div id="p1-hp-bar" class="hp-bar"></div></div>
+            <div id="p1-hp-text" class="hp-text">300 / 300 HP</div>
+            <div id="p1-combo" class="combo-dots">印章: ⚪ ⚪</div>
+        </div>
+        
+        <div id="vs-text">VS</div>
+        <div id="damage-layer" style="position:absolute; width:100%; height:100%; top:0; left:0; pointer-events:none;"></div>
+
+        <div id="p2-card" class="pokemon-card">
+            <div id="p2-name" class="pokemon-name">玩家 2</div>
+            <img id="p2-img" class="pokemon-img" src="" alt="p2">
+            <div class="hp-bar-container"><div id="p2-hp-bar" class="hp-bar"></div></div>
+            <div id="p2-hp-text" class="hp-text">300 / 300 HP</div>
+            <div id="p2-combo" class="combo-dots">印章: ⚪ ⚪</div>
+        </div>
+    </div>
+
+    <div class="quiz-arena">
+        <div class="player-quiz-box p1-box">
+            <div class="quiz-header">✋ 【玩家 1】點擊正確答案</div>
+            <div id="p1-question" class="question-text">-</div>
+            <div class="options-grid">
+                <button class="btn-option" id="p1-opt-0" onclick="handleTouch('p1', 0)">-</button>
+                <button class="btn-option" id="p1-opt-1" onclick="handleTouch('p1', 1)">-</button>
+                <button class="btn-option" id="p1-opt-2" onclick="handleTouch('p1', 2)">-</button>
+                <button class="btn-option" id="p1-opt-3" onclick="handleTouch('p1', 3)">-</button>
+            </div>
+        </div>
+
+        <div class="player-quiz-box p2-box">
+            <div class="quiz-header">✋ 【玩家 2】點擊正確答案</div>
+            <div id="p2-question" class="question-text">-</div>
+            <div class="options-grid">
+                <button class="btn-option" id="p2-opt-0" onclick="handleTouch('p2', 0)">-</button>
+                <button class="btn-option" id="p2-opt-1" onclick="handleTouch('p2', 1)">-</button>
+                <button class="btn-option" id="p2-opt-2" onclick="handleTouch('p2', 2)">-</button>
+                <button class="btn-option" id="p2-opt-3" onclick="handleTouch('p2', 3)">-</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="victory-screen">
+    <div id="victory-text">🎉 某某 獲得了勝利！ 🎉</div>
+    <button id="restart-btn" onclick="initGame()">再戰一局</button>
+</div>
+
+<script>
+    const pokemonDatabase = [
+        { name: "皮卡丘", img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png" },
+        { name: "噴火龍", img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/6.png" },
+        { name: "水箭龜", img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/9.png" },
+        { name: "妙蛙種子", img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/1.png" },
+        { name: "伊布", img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/133.png" },
+        { name: "甲賀忍蛙", img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/658.png" },
+        { name: "路卡利歐", img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/448.png" },
+        { name: "耿鬼", img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/94.png" },
+        { name: "卡比獸", img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/143.png" },
+        { name: "波加曼", img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/393.png" }
+    ];
+
+    let gameState = {
+        p1: { name: "", img: "", hp: 300, maxHp: 300, combo: 0, currentAnswer: 0, startTime: 0, options: [], isLocked: false },
+        p2: { name: "", img: "", hp: 300, maxHp: 300, combo: 0, currentAnswer: 0, startTime: 0, options: [], isLocked: false },
+        isGameOver: false
+    };
+
+    // 點擊「登入戰場」時觸發
+    function startGame() {
+        document.getElementById('start-screen').style.display = 'none';
+        document.getElementById('game-container').style.display = 'block';
+        initGame();
+    }
+
+    // 全屏顯示切換控制
+    function toggleFullScreen() {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(err => {
+                alert(`無法切換全螢幕: ${err.message}`);
+            });
+        } else {
+            document.exitFullscreen();
+        }
+    }
+
+    function initGame() {
+        document.getElementById('victory-screen').style.display = 'none';
+        gameState.isGameOver = false;
+
+        let idx1 = Math.floor(Math.random() * pokemonDatabase.length);
+        let idx2 = Math.floor(Math.random() * pokemonDatabase.length);
+        while(idx1 === idx2) { idx2 = Math.floor(Math.random() * pokemonDatabase.length); }
+
+        gameState.p1 = { name: pokemonDatabase[idx1].name, img: pokemonDatabase[idx1].img, hp: 300, maxHp: 300, combo: 0, isLocked: false };
+        gameState.p2 = { name: pokemonDatabase[idx2].name, img: pokemonDatabase[idx2].img, hp: 300, maxHp: 300, combo: 0, isLocked: false };
+
+        document.getElementById('p1-name').innerText = "【P1】" + gameState.p1.name;
+        document.getElementById('p1-img').src = gameState.p1.img;
+        document.getElementById('p2-name').innerText = "【P2】" + gameState.p2.name;
+        document.getElementById('p2-img').src = gameState.p2.img;
+
+        updateUi();
+        generateQuestion('p1');
+        generateQuestion('p2');
+    }
+
+    function updateUi() {
+        ['p1', 'p2'].forEach(p => {
+            let data = gameState[p];
+            let pct = Math.max(0, (data.hp / data.maxHp) * 100);
+            let bar = document.getElementById(`${p}-hp-bar`);
+            bar.style.width = pct + "%";
+            document.getElementById(`${p}-hp-text`).innerText = `${data.hp} / ${data.maxHp} HP`;
+            
+            if(pct > 50) bar.style.backgroundColor = '#4caf50';
+            else if(pct > 20) bar.style.backgroundColor = '#ff9800';
+            else bar.style.backgroundColor = '#f44336';
+
+            let dots = data.combo === 1 ? "🔴 ⚪" : data.combo === 2 ? "🔴 🔴" : "⚪ ⚪";
+            document.getElementById(`${p}-combo`).innerText = "答對印章: " + dots;
+        });
+    }
+
+    function generateQuestion(player) {
+        if(gameState.isGameOver) return;
+
+        let isMultiplication = Math.random() > 0.5;
+        let num1, num2, questionText, answer;
+        const factors = [2, 3, 4, 5, 10]; 
+
+        if (isMultiplication) {
+            num1 = factors[Math.floor(Math.random() * factors.length)];
+            num2 = Math.floor(Math.random() * 9) + 1;
+            questionText = `${num1} × ${num2} = ?`;
+            answer = num1 * num2;
+        } else {
+            let factor1 = factors[Math.floor(Math.random() * factors.length)];
+            let factor2 = Math.floor(Math.random() * 9) + 1;
+            questionText = `${factor1 * factor2} ÷ ${factor1} = ?`;
+            answer = factor2;
+        }
+
+        gameState[player].currentAnswer = answer;
+        document.getElementById(`${player}-question`).innerText = questionText;
+
+        let options = new Set([answer]);
+        while(options.size < 4) {
+            let wrong = answer + (Math.floor(Math.random() * 7) - 3);
+            if(wrong > 0 && wrong !== answer) options.add(wrong);
+        }
+        gameState[player].options = Array.from(options).sort(() => Math.random() - 0.5);
+
+        for(let i=0; i<4; i++) {
+            let btn = document.getElementById(`${player}-opt-${i}`);
+            btn.innerText = gameState[player].options[i];
+            btn.style.backgroundColor = '#fff';
+        }
+        gameState[player].isLocked = false; 
+        gameState[player].startTime = Date.now();
+    }
+
+    function handleTouch(player, index) {
+        if (gameState.isGameOver || gameState[player].isLocked) return;
+        
+        gameState[player].isLocked = true; 
+        
+        let pData = gameState[player];
+        let selectedVal = pData.options[index];
+        let isCorrect = (selectedVal === pData.currentAnswer);
+        let btn = document.getElementById(`${player}-opt-${index}`);
+
+        if (isCorrect) {
+            btn.style.backgroundColor = '#a5d6a7';
+            pData.combo++;
+            
+            let triggeredAttack = false;
+            if (pData.combo >= 2) {
+                let duration = (Date.now() - pData.startTime) / 1000;
+                let damage = Math.round(20 - Math.min(10, Math.max(0, (duration - 2) * 3.3)));
+                damage = Math.max(10, Math.min(20, damage));
+                
+                let isCrit = Math.random() < 0.2;
+                if(isCrit) damage *= 2;
+                
+                triggerAttack(player, damage, isCrit);
+                pData.combo = 0;
+                triggeredAttack = true;
+            }
+            
+            setTimeout(() => { 
+                generateQuestion(player); 
+                updateUi(); 
+            }, triggeredAttack ? 600 : 450);
+        } else {
+            btn.style.backgroundColor = '#ef9a9a';
+            pData.combo = 0; 
+            updateUi();
+            setTimeout(() => { generateQuestion(player); }, 600);
+        }
+    }
+
+    function triggerAttack(attacker, damage, isCrit) {
+        let opponent = (attacker === 'p1') ? 'p2' : 'p1';
+        let attackerCard = document.getElementById(`${attacker}-card`);
+        let opponentCard = document.getElementById(`${opponent}-card`);
+        
+        attackerCard.classList.add(attacker === 'p1' ? 'attack-left' : 'attack-right');
+        
+        setTimeout(() => {
+            opponentCard.classList.add('hurt');
+            gameState[opponent].hp = Math.max(0, gameState[opponent].hp - damage);
+            
+            showDamagePop(opponent, damage, isCrit);
+            updateUi();
+
+            setTimeout(() => {
+                attackerCard.classList.remove('attack-left', 'attack-right');
+                opponentCard.classList.remove('hurt');
+                
+                if (gameState[opponent].hp <= 0 && !gameState.isGameOver) {
+                    gameState.isGameOver = true;
+                    showVictory(attacker);
+                }
+            }, 300);
+        }, 150);
+    }
+
+    function showDamagePop(targetPlayer, dmg, isCrit) {
+        let layer = document.getElementById('damage-layer');
+        let pop = document.createElement('div');
+        pop.className = 'floating-damage' + (isCrit ? ' crit' : '');
+        pop.innerText = isCrit ? `效果絕佳!! -${dmg} HP` : `-${dmg} HP`;
+        pop.style.left = (targetPlayer === 'p1') ? '20%' : '65%';
+        pop.style.top = '35%';
+        layer.appendChild(pop);
+        setTimeout(() => pop.remove(), 1000);
+    }
+
+    function showVictory(winner) {
+        let winnerName = gameState[winner].name;
+        document.getElementById('victory-text').innerText = `🎉 恭喜！${winnerName} 贏得了比賽！ 🎉`;
+        document.getElementById('victory-screen').style.display = 'flex';
+    }
+</script>
+
+</body>
+</html>
